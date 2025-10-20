@@ -37,7 +37,7 @@ class PatientSchema(BaseModel):
     gender: GenderEnum
     address: str
     email: str
-    phone: str
+    phone: str = Field(..., pattern=r"^\d{11}$")
     recommendation: str
 
 
@@ -47,7 +47,7 @@ class PatientUpdateSchema(BaseModel):
     gender: GenderEnum | None = None
     address: str | None = None
     email: str | None = None
-    phone: str | None = None
+    phone: str | None = Field(None, pattern=r"^\d{11}$")
     recommendation: str | None = None
 
 class PatientOutSchema(PatientSchema):
@@ -64,6 +64,7 @@ MAX_LEN = 300
 
 class BodyFormSchema(BaseModel):
     main_complaint: str = Field(..., max_length=1000)
+    signature: str = Field(...)
 
     epilepsy_seizure: bool = Field(...)
     regular_bowels: bool = Field(...)
@@ -149,7 +150,17 @@ class DermatologicalCondition(str, Enum):
     NODULES = "Nodules"
 
 
-class SkinQuestionnaireAssessment(BaseModel):
+class FacialFormSchema(BaseModel):
+    main_complaint: str = Field(..., max_length=1000)
+    signature: str = Field(...)
+
+    epilepsy_seizure: bool = Field(...)
+    regular_bowels: bool = Field(...)
+    drinks_alcohol: bool = Field(...)
+    pregnant: bool = Field(...)
+    breastfeeding: bool = Field(...)
+    smoker: bool = Field(...)
+
     previous_facial_treatment: str = Field(..., max_length=MAX_LEN)
     drinks_water_frequently: str = Field(..., max_length=MAX_LEN)
     consumes_alcohol: str = Field(..., max_length=MAX_LEN)

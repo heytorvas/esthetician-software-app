@@ -10,3 +10,4 @@ db = GoogleSheetsDB(gcreds_base64, spreadsheet_id)
 
 PATIENTS_SHEET = "Patients"
 APPOINTMENTS_SHEET = "Appointments"
+RECORDS_SHEET = "Records"

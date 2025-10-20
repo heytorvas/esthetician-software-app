@@ -17,34 +17,35 @@ def create_appointment(payload: AppointmentSchema):
     dt = datetime.now().isoformat()
     appointment_id = str(uuid4())
     data = payload.model_dump()
-    # Convert UUID and date fields to strings for JSON serialization
-    if isinstance(data.get("patient_id"), uuid4().__class__):
-        data["patient_id"] = str(data["patient_id"])
+    # Remove patient_id from data JSON, store in its own column
+    patient_id = str(data.pop("patient_id"))
     if "procedures" in data:
         data["procedures"] = [p.value if hasattr(p, "value") else str(p) for p in data["procedures"]]
     if "birth_date" in data and hasattr(data["birth_date"], "isoformat"):
         data["birth_date"] = data["birth_date"].isoformat()
     data["created_at"] = dt
-    db.append(f"{APPOINTMENTS_SHEET}!A:B", [[appointment_id, json.dumps(data)]])
-    return AppointmentOutSchema(id=appointment_id, **data)
+    db.append(f"{APPOINTMENTS_SHEET}!A:C", [[appointment_id, patient_id, json.dumps(data, ensure_ascii=False)]] )
+    return AppointmentOutSchema(id=appointment_id, patient_id=patient_id, **data)
 
 @router.get("/appointments", response_model=list[AppointmentOutSchema])
 def get_appointments(page: int = Query(1, ge=1), limit: int = Query(10, ge=1)):
-    rows = db.read(f"{APPOINTMENTS_SHEET}!A:B")
+    rows = db.read(f"{APPOINTMENTS_SHEET}!A:C")
     appointments = []
     for row in rows[1:]:
-        data = json.loads(row[1])
+        data = json.loads(row[2], encoding="utf-8")
         data["id"] = row[0]
+        data["patient_id"] = row[1]
         appointments.append(AppointmentOutSchema(**data))
     return paginate(appointments, page, limit)
 
 @router.get("/appointments/{appointment_id}", response_model=AppointmentOutSchema)
 def get_appointment(appointment_id: str):
-    rows = db.read(f"{APPOINTMENTS_SHEET}!A:B")
+    rows = db.read(f"{APPOINTMENTS_SHEET}!A:C")
     for row in rows[1:]:
         if row[0] == appointment_id:
-            data = json.loads(row[1])
+            data = json.loads(row[2], encoding="utf-8")
             data["id"] = row[0]
+            data["patient_id"] = row[1]
             return AppointmentOutSchema(**data)
 
 @router.delete("/appointments/{appointment_id}")
