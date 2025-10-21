@@ -5,8 +5,18 @@ from datetime import date, datetime
 from enum import StrEnum, Enum
 
 class ProceduresEnum(StrEnum):
-    BODY = "BODY"
-    FACIAL = "FACIAL"
+    SKIN_CLEANING = "SKIN_CLEANING"
+    DERMAPLANING = "DERMAPLANING"
+    LYMPHATIC_DRAINAGE = "LYMPHATIC_DRAINAGE"
+    CUPPING_MASSAGE = "CUPPING_MASSAGE"
+    FOOT_SPA = "FOOT_SPA"
+    REVITALIZATION = "REVITALIZATION"
+    MANUAL_TECHNIQUES = "MANUAL_TECHNIQUES"
+    TAPING = "TAPING"
+
+class RecordTypeEnum(StrEnum):
+    BODY = "body"
+    FACIAL = "facial"
 
 class AppointmentSchema(BaseModel):
     patient_id: UUID

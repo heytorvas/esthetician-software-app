@@ -11,9 +11,5 @@ dependencies = [
     "motor>=3.3.2",
     "hypercorn>=0.16.0",
     "fastapi>=0.119.1",
-]
-
-[dependency-groups]
-dev = [
     "python-dotenv>=1.1.1",
 ]

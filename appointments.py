@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from datetime import datetime
 from constants import APPOINTMENTS_COLLECTION, PATIENTS_COLLECTION
 from commons import paginate
-from database import get_database
+from database import get_database, serialize_for_mongo
 
 db = get_database()
 
@@ -12,7 +12,7 @@ router = APIRouter()
 
 @router.post("/appointments", response_model=AppointmentOutSchema)
 async def create_appointment(payload: AppointmentSchema):
-    patient = await db[PATIENTS_COLLECTION].find_one({"_id": payload.patient_id})
+    patient = await db[PATIENTS_COLLECTION].find_one({"_id": serialize_for_mongo(payload.patient_id)})
     if not patient:
         raise HTTPException(status_code=400, detail="Invalid patient_id")
 
@@ -24,7 +24,9 @@ async def create_appointment(payload: AppointmentSchema):
     if "procedures" in data:
         data["procedures"] = [p.value if hasattr(p, "value") else str(p) for p in data["procedures"]]
 
-    await db[APPOINTMENTS_COLLECTION].insert_one(data)
+    # Serialize all data for MongoDB (UUID/datetime to string)
+    mongo_data = serialize_for_mongo(data)
+    await db[APPOINTMENTS_COLLECTION].insert_one(mongo_data)
 
     return AppointmentOutSchema(**data)
 
@@ -32,19 +34,21 @@ async def create_appointment(payload: AppointmentSchema):
 async def get_appointments(page: int = Query(1, ge=1), limit: int = Query(10, ge=1)):
     appointments_cursor = db[APPOINTMENTS_COLLECTION].find()
     appointments_list = await appointments_cursor.to_list(length=None)
+    # Optionally, could deserialize here if needed
     appointments = [AppointmentOutSchema(**a) for a in appointments_list]
     return paginate(appointments, page, limit)
 
 @router.get("/appointments/{appointment_id}", response_model=AppointmentOutSchema)
 async def get_appointment(appointment_id: UUID):
-    appointment = await db[APPOINTMENTS_COLLECTION].find_one({"_id": appointment_id})
+    # Always serialize query values (UUID to string)
+    appointment = await db[APPOINTMENTS_COLLECTION].find_one({"_id": serialize_for_mongo(appointment_id)})
     if appointment:
         return AppointmentOutSchema(**appointment)
     raise HTTPException(status_code=404, detail="Appointment not found")
 
 @router.delete("/appointments/{appointment_id}")
 async def delete_appointment(appointment_id: UUID):
-    result = await db[APPOINTMENTS_COLLECTION].delete_one({"_id": appointment_id})
+    result = await db[APPOINTMENTS_COLLECTION].delete_one({"_id": serialize_for_mongo(appointment_id)})
     if result.deleted_count == 1:
         return {"detail": "Appointment deleted"}
     raise HTTPException(status_code=404, detail="Appointment not found")
