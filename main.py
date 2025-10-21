@@ -1,3 +1,5 @@
+import hypercorn.asyncio
+import asyncio
 from fastapi import FastAPI, HTTPException
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,3 +18,11 @@ app.include_router(appointments_router, tags=["appointments"], dependencies=[Dep
 @app.get("/")
 def read_root() -> dict[str, str]:
     return {"Hello": "World"}
+
+async def main():
+    config = hypercorn.Config()
+    config.bind = ["0.0.0.0:8000"]
+    await hypercorn.asyncio.serve(app, config)
+
+if __name__ == "__main__":
+    asyncio.run(main())

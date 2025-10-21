@@ -1,58 +1,50 @@
 from fastapi import APIRouter, HTTPException, Query
-from schemas import AppointmentSchema, AppointmentOutSchema, ProceduresEnum
-from uuid import uuid4
+from schemas import AppointmentSchema, AppointmentOutSchema
+from uuid import UUID, uuid4
 from datetime import datetime
-from constants import db, APPOINTMENTS_SHEET
+from constants import APPOINTMENTS_COLLECTION, PATIENTS_COLLECTION
 from commons import paginate
-from patients import get_patient_by_id
-import json
+from database import get_database
+
+db = get_database()
 
 router = APIRouter()
 
 @router.post("/appointments", response_model=AppointmentOutSchema)
-def create_appointment(payload: AppointmentSchema):
-    patient, _ = get_patient_by_id(payload.patient_id)
+async def create_appointment(payload: AppointmentSchema):
+    patient = await db[PATIENTS_COLLECTION].find_one({"_id": payload.patient_id})
     if not patient:
         raise HTTPException(status_code=400, detail="Invalid patient_id")
-    dt = datetime.now().isoformat()
-    appointment_id = str(uuid4())
+
+    appointment_id = uuid4()
     data = payload.model_dump()
-    # Remove patient_id from data JSON, store in its own column
-    patient_id = str(data.pop("patient_id"))
+    data["_id"] = appointment_id
+    data["created_at"] = datetime.now()
+
     if "procedures" in data:
         data["procedures"] = [p.value if hasattr(p, "value") else str(p) for p in data["procedures"]]
-    if "birth_date" in data and hasattr(data["birth_date"], "isoformat"):
-        data["birth_date"] = data["birth_date"].isoformat()
-    data["created_at"] = dt
-    db.append(f"{APPOINTMENTS_SHEET}!A:C", [[appointment_id, patient_id, json.dumps(data, ensure_ascii=False)]] )
-    return AppointmentOutSchema(id=appointment_id, patient_id=patient_id, **data)
+
+    await db[APPOINTMENTS_COLLECTION].insert_one(data)
+
+    return AppointmentOutSchema(**data)
 
 @router.get("/appointments", response_model=list[AppointmentOutSchema])
-def get_appointments(page: int = Query(1, ge=1), limit: int = Query(10, ge=1)):
-    rows = db.read(f"{APPOINTMENTS_SHEET}!A:C")
-    appointments = []
-    for row in rows[1:]:
-        data = json.loads(row[2], encoding="utf-8")
-        data["id"] = row[0]
-        data["patient_id"] = row[1]
-        appointments.append(AppointmentOutSchema(**data))
+async def get_appointments(page: int = Query(1, ge=1), limit: int = Query(10, ge=1)):
+    appointments_cursor = db[APPOINTMENTS_COLLECTION].find()
+    appointments_list = await appointments_cursor.to_list(length=None)
+    appointments = [AppointmentOutSchema(**a) for a in appointments_list]
     return paginate(appointments, page, limit)
 
 @router.get("/appointments/{appointment_id}", response_model=AppointmentOutSchema)
-def get_appointment(appointment_id: str):
-    rows = db.read(f"{APPOINTMENTS_SHEET}!A:C")
-    for row in rows[1:]:
-        if row[0] == appointment_id:
-            data = json.loads(row[2], encoding="utf-8")
-            data["id"] = row[0]
-            data["patient_id"] = row[1]
-            return AppointmentOutSchema(**data)
+async def get_appointment(appointment_id: UUID):
+    appointment = await db[APPOINTMENTS_COLLECTION].find_one({"_id": appointment_id})
+    if appointment:
+        return AppointmentOutSchema(**appointment)
+    raise HTTPException(status_code=404, detail="Appointment not found")
 
 @router.delete("/appointments/{appointment_id}")
-def delete_appointment(appointment_id: str):
-    rows = db.read(f"{APPOINTMENTS_SHEET}!A:F")
-    for idx, row in enumerate(rows[1:], start=1):
-        if row[0] == appointment_id:
-            db.delete_row(APPOINTMENTS_SHEET, idx)
-            return {"detail": "Appointment deleted"}
+async def delete_appointment(appointment_id: UUID):
+    result = await db[APPOINTMENTS_COLLECTION].delete_one({"_id": appointment_id})
+    if result.deleted_count == 1:
+        return {"detail": "Appointment deleted"}
     raise HTTPException(status_code=404, detail="Appointment not found")

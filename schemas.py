@@ -1,18 +1,12 @@
 from typing import List
 from uuid import UUID
 from pydantic import BaseModel, computed_field, Field
-from datetime import date
+from datetime import date, datetime
 from enum import StrEnum, Enum
 
 class ProceduresEnum(StrEnum):
-    SKIN_CLEANING = "SKIN_CLEANING"
-    DERMAPLANING = "DERMAPLANING"
-    LYMPHATIC_DRAINAGE = "LYMPHATIC_DRAINAGE"
-    CUPPING_MASSAGE = "CUPPING_MASSAGE"
-    FOOT_SPA = "FOOT_SPA"
-    REVITALIZATION = "REVITALIZATION"
-    MANUAL_TECHNIQUES = "MANUAL_TECHNIQUES"
-    TAPING = "TAPING"
+    BODY = "BODY"
+    FACIAL = "FACIAL"
 
 class AppointmentSchema(BaseModel):
     patient_id: UUID
@@ -22,8 +16,11 @@ class AppointmentSchema(BaseModel):
 
 
 class AppointmentOutSchema(AppointmentSchema):
-    id: UUID
-    created_at: str
+    id: UUID = Field(..., alias="_id")
+    created_at: datetime
+
+    class Config:
+        populate_by_name = True
 
 
 class GenderEnum(StrEnum):
@@ -51,9 +48,12 @@ class PatientUpdateSchema(BaseModel):
     recommendation: str | None = None
 
 class PatientOutSchema(PatientSchema):
-    id: UUID
-    created_at: str
-    updated_at: str
+    id: UUID = Field(..., alias="_id")
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        populate_by_name = True
 
     @computed_field
     def age(self) -> int:
