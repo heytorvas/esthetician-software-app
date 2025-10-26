@@ -74,7 +74,7 @@ async def delete_patient(patient_id: UUID) -> dict:
 
 @router.get("/patients/{patient_id}/appointments", response_model=list[AppointmentOutSchema])
 async def get_patient_appointments(patient_id: UUID, page: int = Query(1, ge=1), limit: int = Query(10, ge=1)):
-    appointments_cursor = db[APPOINTMENTS_COLLECTION].find({"patient_id": serialize_for_mongo(patient_id)})
+    appointments_cursor = db[APPOINTMENTS_COLLECTION].find({"patient_id": serialize_for_mongo(patient_id)}).sort("appointment_date", 1)
     appointments_list = await appointments_cursor.to_list(length=None)
     appointments = [AppointmentOutSchema(**a) for a in appointments_list]
     return paginate(appointments, page, limit)
@@ -99,17 +99,16 @@ async def create_record(patient_id: UUID, record: RecordTypeEnum, payload: BodyF
 @router.get("/patients/{patient_id}/records", response_model=dict)
 async def get_records(patient_id: UUID):
     records_cursor = db[RECORDS_COLLECTION].find({"patient_id": serialize_for_mongo(patient_id)})
-
     records = {
         "body": None,
         "facial": None
     }
     async for record in records_cursor:
-        if record["record"] == "BODY":
+        if record["record"] == "body":
             records["body"] = record["form"]
-        elif record["record"] == "FACIAL":
+        elif record["record"] == "facial":
             records["facial"] = record["form"]
-
+    
     return records
 
 @router.get("/options/patients")

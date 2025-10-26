@@ -20,6 +20,7 @@ class RecordTypeEnum(StrEnum):
 
 class AppointmentSchema(BaseModel):
     patient_id: UUID
+    appointment_date: datetime
     procedures: List[ProceduresEnum]
     price: float
     signature: str
@@ -173,7 +174,6 @@ class FacialFormSchema(BaseModel):
 
     previous_facial_treatment: str = Field(..., max_length=MAX_LEN)
     drinks_water_frequently: str = Field(..., max_length=MAX_LEN)
-    consumes_alcohol: str = Field(..., max_length=MAX_LEN)
     exposes_to_sun_often: str = Field(..., max_length=MAX_LEN)
     uses_sunscreen: str = Field(..., max_length=MAX_LEN)
     good_sleep_quality: str = Field(..., max_length=MAX_LEN)
